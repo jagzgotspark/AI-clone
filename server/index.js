@@ -1,46 +1,41 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
+import { systemPrompt } from "./prompt.js";
 
-dotenv.config(); // loads your .env file
+dotenv.config();
 
 const app = express();
-app.use(cors()); // allows frontend to talk to this server
-app.use(express.json()); // lets server read JSON from requests
+app.use(cors());
+app.use(express.json());
 
-// initialize Gemini with your key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// your personality prompt — placeholder for now, Day 2 you'll fill this properly
-const systemPrompt = `You are a person having a casual conversation. 
-Be friendly and helpful.`;
-
-// POST route — frontend will send messages here
 app.post("/chat", async (req, res) => {
   const { message, history } = req.body;
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: systemPrompt,
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...(history || []),
+      { role: "user", content: message },
+    ];
+
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      max_tokens: 400,
     });
 
-    // history keeps track of the full conversation so Gemini has context
-    const chat = model.startChat({
-      history: history || [],
-    });
-
-    const result = await chat.sendMessage(message);
-    const reply = result.response.text();
-
-    res.json({ reply }); // send the reply back to whoever called this route
+    const reply = response.choices[0].message.content;
+    res.json({ reply });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Something went wrong" });
+    res.status(500).json({ error: "something went wrong" });
   }
 });
 
 app.listen(3001, () => {
-  console.log("Server running on http://localhost:3001");
+  console.log("server running on http://localhost:3001");
 });

@@ -1,13 +1,17 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import dotenv from "dotenv";
+import { systemPrompt } from "./prompt.js";
 dotenv.config();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash-latest",
-  systemInstruction: "You are a helpful assistant.",
+const response = await groq.chat.completions.create({
+  model: "llama-3.3-70b-versatile",
+  messages: [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: "bro i can't sleep. my brain won't stop" }
+  ],
+  max_tokens: 400,
 });
 
-const result = await model.generateContent("Say hello and introduce yourself.");
-console.log(result.response.text());
+console.log(response.choices[0].message.content);
