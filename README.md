@@ -101,4 +101,4 @@ The secret is in the prompt. A great personality prompt beats a fancy model ever
 
 **Jagriti Singh** — CSE student, builder, chaotic ambitious person
 
-*Built this in 5 days as a fun project. Yes it actually sounds like me. Yes it's a little unhinged.*
+*Built this in 2 days as a fun project. Yes it actually sounds like me. Yes it's a little unhinged.*
