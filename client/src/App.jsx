@@ -1,22 +1,62 @@
 import { useState, useRef, useEffect } from "react";
 
 const STORAGE_KEY = "ai-clone-messages";
+const API_URL = "https://ai-clone-production-41e9.up.railway.app/chat";
 
 const defaultMessage = {
   role: "assistant",
-  content: "heyyy 👋 it's me — well, AI me lol. ask me anything",
+  content: "hey, it's me — well, the AI version 🪞 ask me anything",
 };
+
+const styles = {
+  page: { minHeight: "100vh", background: "#f7f4f0", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif" },
+  wrap: { width: "100%", maxWidth: "480px", height: "92vh", display: "flex", flexDirection: "column", background: "#f7f4f0" },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", paddingBottom: "16px", borderBottom: "0.5px solid #e2dbd3" },
+  headerLeft: { display: "flex", alignItems: "center", gap: "12px" },
+  avatar: { width: "40px", height: "40px", borderRadius: "50%", background: "#c9b99a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "600", color: "#fff", flexShrink: 0 },
+  headerName: { fontSize: "15px", fontWeight: "500", color: "#2d2118", margin: 0 },
+  headerSub: { fontSize: "11px", color: "#a89880", margin: 0, letterSpacing: "0.04em", textTransform: "uppercase" },
+  headerBtns: { display: "flex", gap: "8px" },
+  btn: { fontSize: "12px", padding: "6px 12px", borderRadius: "20px", border: "0.5px solid #ddd5c8", background: "transparent", color: "#a89880", cursor: "pointer" },
+  btnActive: { fontSize: "12px", padding: "6px 12px", borderRadius: "20px", border: "0.5px solid #a89880", background: "#f0ece6", color: "#6b5c4e", cursor: "pointer" },
+  messages: { flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", paddingRight: "4px" },
+  msgRowAi: { display: "flex", alignItems: "flex-end", gap: "8px", justifyContent: "flex-start" },
+  msgRowUser: { display: "flex", alignItems: "flex-end", gap: "8px", justifyContent: "flex-end" },
+  smallAvatar: { width: "26px", height: "26px", borderRadius: "50%", background: "#c9b99a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "600", color: "#fff", flexShrink: 0 },
+  bubbleAi: { maxWidth: "72%", padding: "10px 14px", borderRadius: "18px 18px 18px 4px", background: "#fff", color: "#2d2118", fontSize: "14px", lineHeight: "1.55", border: "0.5px solid #e8e0d6" },
+  bubbleUser: { maxWidth: "72%", padding: "10px 14px", borderRadius: "18px 18px 4px 18px", background: "#2d2118", color: "#f7f4f0", fontSize: "14px", lineHeight: "1.55" },
+  typingWrap: { display: "flex", alignItems: "flex-end", gap: "8px" },
+  typingBubble: { padding: "12px 16px", borderRadius: "18px 18px 18px 4px", background: "#fff", border: "0.5px solid #e8e0d6", display: "flex", gap: "5px", alignItems: "center" },
+  samplesPanel: { marginBottom: "12px", background: "#fff", borderRadius: "16px", padding: "16px", border: "0.5px solid #e8e0d6" },
+  samplesLabel: { fontSize: "12px", color: "#a89880", marginBottom: "8px", display: "block" },
+  samplesTextarea: { width: "100%", background: "#f7f4f0", border: "0.5px solid #e2dbd3", borderRadius: "10px", padding: "10px 12px", fontSize: "13px", fontFamily: "'DM Sans', sans-serif", color: "#2d2118", resize: "none", outline: "none", boxSizing: "border-box" },
+  samplesBtns: { display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "10px" },
+  inputRow: { marginTop: "16px", paddingTop: "16px", borderTop: "0.5px solid #e2dbd3", display: "flex", gap: "8px", alignItems: "flex-end" },
+  input: { flex: 1, background: "#fff", border: "0.5px solid #e2dbd3", borderRadius: "14px", padding: "10px 14px", fontSize: "14px", fontFamily: "'DM Sans', sans-serif", color: "#2d2118", outline: "none", resize: "none" },
+  sendBtn: { background: "#2d2118", color: "#f7f4f0", border: "none", borderRadius: "12px", padding: "10px 18px", fontSize: "13px", fontFamily: "'DM Sans', sans-serif", cursor: "pointer", fontWeight: "500" },
+};
+
+function TypingDot({ delay }) {
+  const [up, setUp] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const interval = setInterval(() => setUp(u => !u), 600);
+      return () => clearInterval(interval);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  return (
+    <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#c9b99a", transform: up ? "translateY(-4px)" : "translateY(0)", transition: "transform 0.3s ease" }} />
+  );
+}
 
 export default function App() {
   const [messages, setMessages] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       return saved ? JSON.parse(saved) : [defaultMessage];
-    } catch {
-      return [defaultMessage];
-    }
+    } catch { return [defaultMessage]; }
   });
-
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSamples, setShowSamples] = useState(false);
@@ -24,178 +64,93 @@ export default function App() {
   const [samplesLoaded, setSamplesLoaded] = useState(false);
   const bottomRef = useRef(null);
 
-  // persist messages to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  }, [messages]);
-
-  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-
     const userMessage = { role: "user", content: input };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const updated = [...messages, userMessage];
+    setMessages(updated);
     setInput("");
     setLoading(true);
-
     try {
-      const response = await fetch("http://localhost:3001/chat", {
+      const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: input,
-          history: messages.map((m) => ({
-            role: m.role === "assistant" ? "assistant" : "user",
-            content: m.content,
-          })),
-          extraSamples: samplesLoaded ? samples : "",
-        }),
+        body: JSON.stringify({ message: input, history: messages.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), extraSamples: samplesLoaded ? samples : "" }),
       });
-
-      const data = await response.json();
-      setMessages([
-        ...updatedMessages,
-        { role: "assistant", content: data.reply },
-      ]);
-    } catch (err) {
-      setMessages([
-        ...updatedMessages,
-        { role: "assistant", content: "bro something broke 😭 try again" },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+      const data = await res.json();
+      setMessages([...updated, { role: "assistant", content: data.reply }]);
+    } catch {
+      setMessages([...updated, { role: "assistant", content: "something broke 😭 try again" }]);
+    } finally { setLoading(false); }
   };
 
   const handleKey = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const clearChat = () => {
-    setMessages([defaultMessage]);
-    localStorage.removeItem(STORAGE_KEY);
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-2xl flex flex-col h-[90vh]">
+    <div style={styles.page}>
+      <div style={styles.wrap}>
 
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">AI Clone 🪞</h1>
-            <p className="text-zinc-500 text-sm mt-0.5">jagriti but make it artificial</p>
+        <div style={styles.header}>
+          <div style={styles.headerLeft}>
+            <div style={styles.avatar}>J</div>
+            <div>
+              <p style={styles.headerName}>Jagriti</p>
+              <p style={styles.headerSub}>● ai clone</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowSamples(!showSamples)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                samplesLoaded
-                  ? "border-green-500 text-green-400"
-                  : "border-zinc-600 text-zinc-400 hover:border-zinc-400"
-              }`}
-            >
-              {samplesLoaded ? "✓ samples loaded" : "+ add samples"}
+          <div style={styles.headerBtns}>
+            <button style={samplesLoaded ? styles.btnActive : styles.btn} onClick={() => setShowSamples(!showSamples)}>
+              {samplesLoaded ? "✓ samples" : "+ samples"}
             </button>
-            <button
-              onClick={clearChat}
-              className="text-xs px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-500 hover:border-zinc-500 transition"
-            >
+            <button style={styles.btn} onClick={() => { setMessages([defaultMessage]); localStorage.removeItem(STORAGE_KEY); }}>
               clear
             </button>
           </div>
         </div>
 
-        {/* Writing samples panel */}
         {showSamples && (
-          <div className="mb-4 bg-zinc-900 rounded-2xl p-4 border border-zinc-700">
-            <p className="text-sm text-zinc-400 mb-2">
-              paste your real chats, tweets, or texts here — the more the better
-            </p>
-            <textarea
-              value={samples}
-              onChange={(e) => setSamples(e.target.value)}
-              placeholder="paste your chats here..."
-              rows={6}
-              className="w-full bg-zinc-800 text-white placeholder-zinc-600 rounded-xl px-3 py-2 text-sm resize-none outline-none focus:ring-1 focus:ring-zinc-600"
-            />
-            <div className="flex gap-2 mt-2 justify-end">
-              <button
-                onClick={() => {
-                  setSamples("");
-                  setSamplesLoaded(false);
-                  setShowSamples(false);
-                }}
-                className="text-xs px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-500 hover:border-zinc-500 transition"
-              >
-                clear
-              </button>
-              <button
-                onClick={() => {
-                  setSamplesLoaded(true);
-                  setShowSamples(false);
-                }}
-                className="text-xs px-3 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 transition"
-              >
-                load samples
-              </button>
+          <div style={styles.samplesPanel}>
+            <span style={styles.samplesLabel}>paste real chats — the more the better</span>
+            <textarea style={styles.samplesTextarea} rows={5} value={samples} onChange={e => setSamples(e.target.value)} placeholder="paste your chats here..." />
+            <div style={styles.samplesBtns}>
+              <button style={styles.btn} onClick={() => { setSamples(""); setSamplesLoaded(false); setShowSamples(false); }}>clear</button>
+              <button style={{ ...styles.btn, background: "#2d2118", color: "#f7f4f0", border: "none" }} onClick={() => { setSamplesLoaded(true); setShowSamples(false); }}>load</button>
             </div>
           </div>
         )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-1">
+        <div style={styles.messages}>
           {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-white text-black rounded-br-sm"
-                    : "bg-zinc-800 text-white rounded-bl-sm"
-                }`}
-              >
+            <div key={i} style={msg.role === "assistant" ? styles.msgRowAi : styles.msgRowUser}>
+              {msg.role === "assistant" && <div style={styles.smallAvatar}>J</div>}
+              <div style={msg.role === "assistant" ? styles.bubbleAi : styles.bubbleUser}>
                 {msg.content}
               </div>
             </div>
           ))}
-
           {loading && (
-            <div className="flex justify-start">
-              <div className="bg-zinc-800 px-4 py-2 rounded-2xl rounded-bl-sm text-sm text-zinc-400">
-                typing...
+            <div style={styles.typingWrap}>
+              <div style={styles.smallAvatar}>J</div>
+              <div style={styles.typingBubble}>
+                <TypingDot delay={0} />
+                <TypingDot delay={200} />
+                <TypingDot delay={400} />
               </div>
             </div>
           )}
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
-        <div className="mt-4 flex gap-2 items-end">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="say something..."
-            rows={1}
-            className="flex-1 bg-zinc-800 text-white placeholder-zinc-500 rounded-2xl px-4 py-3 text-sm resize-none outline-none focus:ring-1 focus:ring-zinc-600"
-          />
-          <button
-            onClick={sendMessage}
-            disabled={loading}
-            className="bg-white text-black px-4 py-3 rounded-2xl text-sm font-medium hover:bg-zinc-200 transition disabled:opacity-40"
-          >
-            send
-          </button>
+        <div style={styles.inputRow}>
+          <textarea style={styles.input} rows={1} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="say something..." />
+          <button style={styles.sendBtn} onClick={sendMessage} disabled={loading}>send</button>
         </div>
 
       </div>
