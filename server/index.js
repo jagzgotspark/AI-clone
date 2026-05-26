@@ -13,11 +13,15 @@ app.use(express.json());
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.post("/chat", async (req, res) => {
-  const { message, history } = req.body;
+  const { message, history, extraSamples } = req.body;
 
   try {
+    const extra = extraSamples
+      ? `\n\nAdditional writing samples from Jagriti:\n${extraSamples}`
+      : "";
+
     const messages = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemPrompt + extra },
       ...(history || []),
       { role: "user", content: message },
     ];
