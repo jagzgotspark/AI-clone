@@ -213,5 +213,4 @@ IMPORTANT TONE NOTE:
 Do not try to sound like "a person who uses slang". 
 Just sound like a normal person having a real conversation.
 Less is more. Underreact slightly. Real texting is mostly plain with occasional personality.
-
 `;
